@@ -1,0 +1,38 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Option A (recommended): tell the site where your backend lives by setting the env var
+#   VITE_API_BASE = https://your-backend.example.com
+# in Netlify → Site configuration → Environment variables, then redeploy.
+#
+# Option B: edit dist/config.json  ->  { "apiBase": "https://your-backend.example.com" }
+# (handy for drag-and-drop deploys: no rebuild needed).
+#
+# Option C: keep the browser on the same origin by proxying /api to the backend.
+# Replace the URL, uncomment, and leave VITE_API_BASE empty.
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://your-backend.example.com/api/:splat"
+#   status = 200
+#   force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "DENY"

@@ -1,0 +1,282 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+
+/*
+  md download — three colours only:
+    electric blue  #2b7bff
+    dark black     #050608
+    smoke white    #f5f5f5
+  Every surface, border and glow below is one of these (or a transparent mix of them).
+*/
+:root {
+  --electric: #2b7bff;
+  --black: #050608;
+  --smoke: #f5f5f5;
+
+  --background: var(--black);
+  --foreground: var(--smoke);
+  --card: color-mix(in oklab, var(--smoke) 4%, var(--black));
+  --card-foreground: var(--smoke);
+  --popover: color-mix(in oklab, var(--smoke) 7%, var(--black));
+  --popover-foreground: var(--smoke);
+  --primary: var(--electric);
+  --primary-foreground: var(--black);
+  --secondary: color-mix(in oklab, var(--smoke) 9%, var(--black));
+  --secondary-foreground: var(--smoke);
+  --muted: color-mix(in oklab, var(--smoke) 6%, var(--black));
+  --muted-foreground: color-mix(in oklab, var(--smoke) 64%, var(--black));
+  --accent: color-mix(in oklab, var(--electric) 18%, var(--black));
+  --accent-foreground: var(--smoke);
+  --border: color-mix(in oklab, var(--smoke) 12%, transparent);
+  --input: color-mix(in oklab, var(--smoke) 16%, transparent);
+  --ring: var(--electric);
+}
+
+@theme {
+  --color-*: initial;
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Corner-round UI: every radius is generous. */
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-electric: var(--electric);
+  --color-smoke: var(--smoke);
+  --color-ink: var(--black);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--electric) 45%, transparent);
+    color: var(--smoke);
+  }
+  :focus-visible {
+    outline: 2px solid var(--electric);
+    outline-offset: 3px;
+  }
+  button,
+  [role="tab"],
+  [role="radio"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ───────────── decorative utilities ───────────── */
+
+/* Subtle engineering-paper grid that fades out towards the edges. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--smoke) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--smoke) 6%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, var(--black) 20%, transparent 78%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, var(--black) 20%, transparent 78%);
+}
+
+/* Uiverse-style rotating electric border. Put on any element with a border-radius. */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+.glow-border {
+  position: relative;
+  isolation: isolate;
+}
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 0 55%,
+    color-mix(in oklab, var(--electric) 40%, transparent) 72%,
+    var(--electric) 88%,
+    transparent 100%
+  );
+  -webkit-mask:
+    linear-gradient(var(--black) 0 0) content-box,
+    linear-gradient(var(--black) 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(var(--black) 0 0) content-box exclude,
+    linear-gradient(var(--black) 0 0);
+  animation: spin-angle 5s linear infinite;
+  pointer-events: none;
+}
+@keyframes spin-angle {
+  to {
+    --angle: 360deg;
+  }
+}
+
+/* Uiverse-style button: light sweep + glow on hover. */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--electric) 60%, transparent),
+    0 10px 30px -8px color-mix(in oklab, var(--electric) 70%, transparent);
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    color-mix(in oklab, var(--smoke) 55%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+.btn-shine:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 0 1px var(--electric),
+    0 14px 40px -6px color-mix(in oklab, var(--electric) 85%, transparent);
+}
+.btn-shine:hover:not(:disabled)::after {
+  transform: translateX(120%);
+}
+.btn-shine:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Uiverse-style equaliser loader. */
+.eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 1.1em;
+}
+.eq > i {
+  width: 3px;
+  height: 100%;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: eq 1s ease-in-out infinite;
+}
+.eq > i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.eq > i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.eq > i:nth-child(4) {
+  animation-delay: 0.45s;
+}
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+/* Indeterminate stripe for progress bars that don't know their size yet. */
+.stripes {
+  background-image: repeating-linear-gradient(
+    115deg,
+    transparent 0 12px,
+    color-mix(in oklab, var(--smoke) 28%, transparent) 12px 24px
+  );
+  background-size: 34px 100%;
+  animation: stripes 0.9s linear infinite;
+}
+@keyframes stripes {
+  to {
+    background-position: 34px 0;
+  }
+}
+
+/* Platform marquee. */
+.marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 38s linear infinite;
+}
+.marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .marquee {
+    animation: none;
+    flex-wrap: wrap;
+    width: auto;
+    justify-content: center;
+  }
+}

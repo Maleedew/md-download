@@ -1,0 +1,12 @@
+# One-click backend on Render (https://render.com → New → Blueprint). Free plan is enough to try it.
+services:
+  - type: web
+    name: md-download-api
+    runtime: docker
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false   # paste your Netlify URL, e.g. https://md-download.netlify.app
