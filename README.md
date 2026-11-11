@@ -56,6 +56,13 @@ Settings (environment variables, all optional, see `server/.env.example`):
 | `COOKIES_FILE` / `YTDLP_PROXY` | – | See "YouTube from a server" below. |
 | `AUTO_UPDATE_YTDLP` | `1` | Docker: update yt-dlp on every boot. |
 
+**Vercel (free, no card) — "direct mode":** import this repo in Vercel (framework Vite, root = repo root). `vercel.json`
+and `api/index.py` (FastAPI + yt-dlp + ffmpeg) are picked up automatically, so one Vercel project serves the site *and* the
+API on the same origin. Optionally set `ALLOWED_ORIGINS` (e.g. `https://md-dev-download.netlify.app`) to let a Netlify
+copy of the site call it, and put the Vercel URL in `public/config.json` → `apiBase`. Limits: no queue or live progress
+from the server (the browser shows download progress), ~300 s per file, small files only, YouTube often blocked from
+Vercel IPs.
+
 ### 2) The site on Netlify
 
 Pick one:

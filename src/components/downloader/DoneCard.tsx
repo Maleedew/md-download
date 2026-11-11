@@ -15,7 +15,7 @@ export function DoneCard({
   onReset: () => void;
 }) {
   const badge = useRef<HTMLDivElement>(null);
-  const href = api.fileUrl(job.id);
+  const href = job.blobUrl ?? api.fileUrl(job.id);
 
   // Pop the check mark in.
   useEffect(() => {

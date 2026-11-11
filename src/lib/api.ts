@@ -36,9 +36,12 @@ export interface JobState {
   error?: string;
   fileName?: string;
   size?: number;
+  /** Direct mode: the finished file already lives in the browser as an object URL. */
+  blobUrl?: string;
 }
 export interface Health {
   ok: boolean;
+  mode?: "jobs" | "direct";
   ytdlp: string | null;
   ffmpeg: boolean;
   limits?: { maxDurationMin: number; maxFileSizeMb: number };
@@ -128,8 +131,70 @@ async function request<T>(path: string, init?: RequestInit & { timeoutMs?: numbe
   return data as T;
 }
 
+let serverMode: "jobs" | "direct" = "jobs";
+export const isDirectMode = () => serverMode === "direct";
+
+function fileNameFrom(cd: string | null, fallback: string): string {
+  if (!cd) return fallback;
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+  if (star) {
+    try {
+      return decodeURIComponent(star[1]);
+    } catch {
+      /* fall through */
+    }
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(cd);
+  return plain ? plain[1] : fallback;
+}
+
+/** Serverless mode: one request that returns the finished file; progress comes from Content-Length. */
+async function downloadDirect(
+  url: string,
+  kind: Kind,
+  quality: number,
+  onProgress: (fraction: number | null, bytes: number) => void,
+  signal: AbortSignal,
+): Promise<{ blob: Blob; fileName: string; size: number }> {
+  const qs = new URLSearchParams({ url, kind, quality: String(quality) });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBase()}/api/download?${qs}`, { signal });
+  } catch (e) {
+    if ((e as Error).name === "AbortError") throw e;
+    throw new ApiError("Can't reach the download server. Check your connection or the server settings.", 0);
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(data?.error ?? "The download failed. Please try again.", res.status);
+  }
+  const total = Number(res.headers.get("Content-Length")) || 0;
+  const parts: BlobPart[] = [];
+  let got = 0;
+  if (res.body) {
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value as BlobPart);
+      got += value.length;
+      onProgress(total ? got / total : null, got);
+    }
+  } else {
+    parts.push(await res.blob());
+    got = (parts[0] as Blob).size;
+  }
+  const fileName = fileNameFrom(res.headers.get("Content-Disposition"), `download.${kind}`);
+  return { blob: new Blob(parts, { type: res.headers.get("Content-Type") ?? undefined }), fileName, size: got };
+}
+
 export const api = {
-  health: () => request<Health>("/health", { timeoutMs: 10_000 }),
+  downloadDirect,
+  health: () =>
+    request<Health>("/health", { timeoutMs: 10_000 }).then((h) => {
+      serverMode = h.mode === "direct" ? "direct" : "jobs";
+      return h;
+    }),
   info: (url: string) =>
     request<{ info: VideoInfo }>("/info", { method: "POST", body: JSON.stringify({ url }) }).then((r) => r.info),
   startJob: (url: string, kind: Kind, quality: number) =>

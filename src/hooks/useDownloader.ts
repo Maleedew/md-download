@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, ApiError, type JobState, type Kind, type VideoInfo } from "@/lib/api";
+import { api, ApiError, isDirectMode, type JobState, type Kind, type VideoInfo } from "@/lib/api";
 
 export type Phase = "idle" | "analyzing" | "ready" | "downloading" | "done" | "error";
 
@@ -37,6 +37,7 @@ const MAX_POLL_FAILURES = 6;
 export function useDownloader() {
   const [s, setS] = useState<DownloaderState>(initial);
   const analyzeSeq = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   const analyze = useCallback(async (rawUrl: string) => {
     const url = rawUrl.trim();
@@ -74,6 +75,34 @@ export function useDownloader() {
   const start = useCallback(async () => {
     const { url, kind, videoRes, audioKbps } = s;
     setS((p) => ({ ...p, phase: "downloading", job: null, jobId: null, error: null }));
+    if (isDirectMode()) {
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+      const base: JobState = { id: "direct", kind, status: "running", stage: "downloading", progress: 0, speed: null, eta: null };
+      setS((p) => ({ ...p, job: base }));
+      try {
+        const r = await api.downloadDirect(
+          url,
+          kind,
+          kind === "mp4" ? videoRes : audioKbps,
+          (f, bytes) => setS((p) => (p.phase === "downloading" ? { ...p, job: { ...base, progress: f ?? 0, size: bytes } } : p)),
+          ctrl.signal,
+        );
+        const blobUrl = URL.createObjectURL(r.blob);
+        const job: JobState = { ...base, status: "done", stage: "done", progress: 1, fileName: r.fileName, size: r.size, blobUrl };
+        setS((p) => ({ ...p, job, phase: "done" }));
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        setS((p) => ({
+          ...p,
+          phase: "error",
+          error: e instanceof ApiError ? e.message : "The download failed. Please try again.",
+          errorFrom: "download",
+        }));
+      }
+      return;
+    }
     try {
       const { id } = await api.startJob(url, kind, kind === "mp4" ? videoRes : audioKbps);
       setS((p) => ({ ...p, jobId: id }));
@@ -131,6 +160,7 @@ export function useDownloader() {
   }, [phase, jobId]);
 
   const cancel = useCallback(() => {
+    abortRef.current?.abort();
     if (s.jobId) api.cancel(s.jobId).catch(() => {});
     setS((p) => ({ ...p, phase: "ready", job: null, jobId: null }));
   }, [s.jobId]);
